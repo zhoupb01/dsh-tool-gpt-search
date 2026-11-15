@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="GPT search">
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#153e49"/>
+  <g fill="none" stroke="#d8fff1" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="56" cy="55" r="29"/>
+    <ellipse cx="56" cy="55" rx="13" ry="29" stroke-width="3"/>
+    <path d="M29 46h54M29 64h54" stroke-width="3"/>
+    <path d="m78 78 22 23" stroke-width="10"/>
+  </g>
+  <path d="m98 20 3 9 9 3-9 3-3 9-3-9-9-3 9-3z" fill="#8bf2cf"/>
+</svg>

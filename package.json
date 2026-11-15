@@ -1,0 +1,55 @@
+{
+  "name": "dsh-tool-gpt-search",
+  "version": "0.3.0",
+  "description": "GPT web search for DeepSeek Harness with source citations and configurable search endpoints.",
+  "license": "MIT",
+  "author": "zhoupb01",
+  "homepage": "https://github.com/zhoupb01/dsh-tool-gpt-search#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhoupb01/dsh-tool-gpt-search.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zhoupb01/dsh-tool-gpt-search/issues"
+  },
+  "keywords": ["dsh", "deepseek-harness", "gpt", "web-search", "plugin"],
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "search.js",
+    "configuration.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "README.en.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check": "node --check index.js && node --check search.js && node --check configuration.js && node --check client.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": ["@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-ui-plugin-manager", "@deepseek-ai/dsh-api-remotes"]
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "3.19.0"
+  }
+}

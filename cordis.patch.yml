@@ -1,0 +1,4 @@
+- insert:
+    - id: gpt-search
+      name: dsh-tool-gpt-search
+      config: {}

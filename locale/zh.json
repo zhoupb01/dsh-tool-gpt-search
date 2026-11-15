@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "GPT 搜索",
+    "description": "使用 GPT 搜索实时网页，支持域名和时间筛选并返回来源引用，模型可配置，默认 gpt-6.1-sol，支持独立覆盖 BASE_URL 和 API KEY。"
+  }
+}

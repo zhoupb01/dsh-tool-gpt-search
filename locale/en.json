@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "GPT search",
+    "description": "Search the live web with GPT, filter by domain or recent days, and return source citations. Configurable model, defaulting to gpt-6.1-sol, with independent BASE_URL and API KEY overrides."
+  }
+}
