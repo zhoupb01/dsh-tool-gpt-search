@@ -1,3 +1,5 @@
+[![npm](https://img.shields.io/npm/v/dsh-tool-gpt-search.svg)](https://www.npmjs.com/package/dsh-tool-gpt-search)
+
 # GPT search for DeepSeek Harness
 
 [中文](README.md) | English
@@ -10,9 +12,13 @@ You need a gateway that implements `POST /alpha/search`. This is a custom endpoi
 
 Use Node.js 22 or newer. The plugin targets the DSH `0.2.2-rc.3` plugin APIs; check compatibility before using another DSH version.
 
-Install a published version from [GitHub Releases](https://github.com/zhoupb01/dsh-tool-gpt-search/releases). Each release includes a `.tgz` package and a `SHA256SUMS` checksum file. You can ask DSH:
+Install from [npm](https://www.npmjs.com/package/dsh-tool-gpt-search). In DSH, open **Plugins → Add plugin** and enter `dsh-tool-gpt-search@0.3.1`, or ask DSH:
 
-> Use plugin_manager with action install_bundle to install https://github.com/zhoupb01/dsh-tool-gpt-search/releases/download/v0.3.0/dsh-tool-gpt-search-0.3.0.tgz
+> Use plugin_manager with action install_bundle to install dsh-tool-gpt-search@0.3.1
+
+The same version is also available as a `.tgz` package from [GitHub Releases](https://github.com/zhoupb01/dsh-tool-gpt-search/releases), with a `SHA256SUMS` checksum file:
+
+> Use plugin_manager with action install_bundle to install https://github.com/zhoupb01/dsh-tool-gpt-search/releases/download/v0.3.1/dsh-tool-gpt-search-0.3.1.tgz
 
 Alternatively, clone the source:
 
@@ -90,7 +96,15 @@ npm pack --dry-run
 
 Tests use mocked gateways and a loopback HTTP server; no real API keys are required. GitHub Actions runs syntax, test, and package checks on Node.js 22 and 24. These checks do not exercise a real gateway or the DSH settings UI.
 
-To release, update the versions in `package.json` and `package-lock.json`, commit, and push a matching `v<version>` tag. After checks pass on both Node.js versions, GitHub Actions verifies that the tag matches the package version, creates a GitHub Release, and uploads the `.tgz` package and `SHA256SUMS`. This workflow does not publish to the npm registry.
+To release, update the versions in `package.json`, `package-lock.json`, and the installation examples, commit, and push a matching `v<version>` tag. After checks pass on both Node.js versions, GitHub Actions verifies that the tag matches the package version, creates a GitHub Release, and uploads the `.tgz` package and `SHA256SUMS`.
+
+Publish the same GitHub Release tarball to npm using an account with publishing access:
+
+```sh
+npm publish ./dsh-tool-gpt-search-<version>.tgz --access public --registry=https://registry.npmjs.org
+```
+
+GitHub Actions handles the GitHub Release; run npm publication separately. Verify with `npm view dsh-tool-gpt-search version dist.tarball --registry=https://registry.npmjs.org` that npm's `latest`, the GitHub tag, and the tarball all refer to the same version.
 
 The package has no install scripts. Follow the install result's `application` / `nextStep` when updating an installed copy; restart DSH if requested. Disabling the plugin removes its tool and prompt guidance.
 

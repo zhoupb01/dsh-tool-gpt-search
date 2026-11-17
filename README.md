@@ -1,3 +1,5 @@
+[![npm](https://img.shields.io/npm/v/dsh-tool-gpt-search.svg)](https://www.npmjs.com/package/dsh-tool-gpt-search)
+
 # GPT search for DeepSeek Harness
 
 中文 | [English](README.en.md)
@@ -10,9 +12,13 @@
 
 需要 Node.js 22 或更新版本。项目面向 DSH `0.2.2-rc.3` 的插件接口开发，其他版本请先核对兼容性。
 
-推荐从 [GitHub Releases](https://github.com/zhoupb01/dsh-tool-gpt-search/releases) 安装已发布版本。每个版本提供 `.tgz` 安装包和 `SHA256SUMS` 校验文件。可以直接对 DSH 说：
+推荐从 [npm](https://www.npmjs.com/package/dsh-tool-gpt-search) 安装。可以在 DSH「插件 → 添加插件」中输入 `dsh-tool-gpt-search@0.3.1`，也可以直接对 DSH 说：
 
-> 使用 plugin_manager 的 install_bundle 安装 https://github.com/zhoupb01/dsh-tool-gpt-search/releases/download/v0.3.0/dsh-tool-gpt-search-0.3.0.tgz
+> 使用 plugin_manager 的 install_bundle 安装 dsh-tool-gpt-search@0.3.1
+
+也可以从 [GitHub Releases](https://github.com/zhoupb01/dsh-tool-gpt-search/releases) 安装同版本的 `.tgz` 包；每个版本附带 `SHA256SUMS` 校验文件：
+
+> 使用 plugin_manager 的 install_bundle 安装 https://github.com/zhoupb01/dsh-tool-gpt-search/releases/download/v0.3.1/dsh-tool-gpt-search-0.3.1.tgz
 
 也可以克隆源码：
 
@@ -99,7 +105,15 @@ npm pack --dry-run
 
 测试使用模拟网关和本机回环 HTTP 服务，不需要真实 API KEY。GitHub Actions 在 Node.js 22 和 24 上运行语法、测试和打包检查；这些检查不覆盖真实网关可用性或 DSH 页面交互。
 
-发布时，先同步更新 `package.json` 和 `package-lock.json` 的版本并提交，再推送对应的 `v<版本号>` tag。两个 Node.js 版本的检查通过后，GitHub Actions 会验证 tag 与包版本一致，创建 GitHub Release，并上传 `.tgz` 安装包和 `SHA256SUMS`。此流程不向 npm registry 发布。
+发布时，先同步更新 `package.json` 和 `package-lock.json` 的版本、安装示例并提交，再推送对应的 `v<版本号>` tag。两个 Node.js 版本的检查通过后，GitHub Actions 会验证 tag 与包版本一致，创建 GitHub Release，并上传 `.tgz` 安装包和 `SHA256SUMS`。
+
+npm 发布使用同一 GitHub Release 的 `.tgz`，需要已登录且具有发布权限的 npm 账号：
+
+```sh
+npm publish ./dsh-tool-gpt-search-<版本号>.tgz --access public --registry=https://registry.npmjs.org
+```
+
+GitHub Actions 只负责 GitHub Release，npm 发布需单独执行。发布后核对 `npm view dsh-tool-gpt-search version dist.tarball --registry=https://registry.npmjs.org`，确认 npm 的 `latest`、GitHub tag 和安装包版本一致。
 
 图标为本插件原创 SVG。`locale/en.json` 和 `locale/zh.json` 提供插件管理器的名称和介绍。
 
