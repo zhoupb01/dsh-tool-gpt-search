@@ -12,13 +12,13 @@
 
 需要 Node.js 22 或更新版本。项目面向 DSH `0.2.2-rc.3` 的插件接口开发，其他版本请先核对兼容性。
 
-推荐从 [npm](https://www.npmjs.com/package/dsh-tool-gpt-search) 安装。可以在 DSH「插件 → 添加插件」中输入 `dsh-tool-gpt-search@0.3.1`，也可以直接对 DSH 说：
+推荐从 [npm](https://www.npmjs.com/package/dsh-tool-gpt-search) 安装。可以在 DSH「插件 → 添加插件」中输入 `dsh-tool-gpt-search@0.4.0`，也可以直接对 DSH 说：
 
-> 使用 plugin_manager 的 install_bundle 安装 dsh-tool-gpt-search@0.3.1
+> 使用 plugin_manager 的 install_bundle 安装 dsh-tool-gpt-search@0.4.0
 
 也可以从 [GitHub Releases](https://github.com/zhoupb01/dsh-tool-gpt-search/releases) 安装同版本的 `.tgz` 包；每个版本附带 `SHA256SUMS` 校验文件：
 
-> 使用 plugin_manager 的 install_bundle 安装 https://github.com/zhoupb01/dsh-tool-gpt-search/releases/download/v0.3.1/dsh-tool-gpt-search-0.3.1.tgz
+> 使用 plugin_manager 的 install_bundle 安装 https://github.com/zhoupb01/dsh-tool-gpt-search/releases/download/v0.4.0/dsh-tool-gpt-search-0.4.0.tgz
 
 也可以克隆源码：
 
@@ -32,7 +32,7 @@ npm ci --ignore-scripts
 
 > 使用 plugin_manager 的 install_bundle 安装本机克隆的 dsh-tool-gpt-search 目录。
 
-安装会作用于当前 profile 的所有会话。安装后打开「插件 → 已安装插件 → GPT 搜索」，填写搜索网关的 BASE_URL、API KEY 和模型；已有 `magpie-responses` 或 `magpie` 提供商时，也可以沿用其地址和凭证。
+安装会作用于当前 profile 的所有会话。搜索默认沿用当前会话选中的模型提供商。也可以打开「插件 → 已安装插件 → GPT 搜索」，指定搜索网关和模型。
 
 ## 使用
 
@@ -57,7 +57,7 @@ npm ci --ignore-scripts
 搜索协议和结果裁剪逻辑最初移植自 Pi 的本地 `codex-search` 扩展；DSH 的工具注册、会话存储、配置和凭证管理由本插件适配。模型通过插件设置独立配置：
 
 - 默认模型 `gpt-6.1-sol`，支持修改，原样传给搜索接口，不自动添加提供商前缀。
-- 地址和密钥默认沿用 DSH 的 `magpie-responses` 提供商，没有该路由时使用 `magpie`。
+- 地址和密钥默认沿用当前会话选中的模型提供商。
 - `POST {baseURL}/alpha/search`，Bearer 认证，禁止重定向。
 - 请求携带当前 DSH 会话 ID、`commands.search_query`、`external_web_access: true` 和 `max_output_tokens: 4000`。
 - 请求超时 45 秒，支持用户取消和插件卸载取消。
@@ -69,22 +69,22 @@ DSH 适配部分：默认通过模型提供商目录和设置服务读取现有�
 
 ## 配置前提
 
-默认地址和密钥继续使用 DSH「设置 → 模型」中的 `magpie-responses`（兼容旧名称 `magpie`），搜索模型独立默认为 `gpt-6.1-sol`。升级保留已有 BASE_URL 和 API KEY 覆盖，不改动聊天提供商的密钥。
+每次搜索都读取当前会话选中的模型提供商。提供商在「设置 → 模型」中须有支持搜索的地址和可用的 API KEY，也可以在插件里直接设置两项。搜索模型独立默认为 `gpt-6.1-sol`。
 
 打开侧栏「插件 → 已安装插件 → GPT 搜索」即可编辑配置，组件行的「配置」入口也可以打开同一表单。
 
 | 设置状态 | 搜索地址 | 搜索密钥 |
 | --- | --- | --- |
-| 没有覆盖 | 现有提供商地址 | 现有提供商密钥 |
-| 只填 BASE_URL | 填写的地址 | 现有提供商密钥 |
-| 只设置 API KEY | 现有提供商地址 | 独立保存的密钥 |
+| 没有覆盖 | 当前会话提供商的地址 | 当前会话提供商的密钥 |
+| 只填 BASE_URL | 必须指向当前提供商的同一个搜索端点 | 当前会话提供商的密钥 |
+| 只设置 API KEY | 当前会话提供商的地址 | 独立保存的密钥 |
 | 两项都设置 | 填写的地址 | 独立保存的密钥 |
 
 BASE_URL 填写包含 `/v1` 的基础地址，例如 `https://your-sub2api.example/v1`；插件追加 `/alpha/search`，最终请求 `POST https://your-sub2api.example/v1/alpha/search`。页面会预览最终请求地址。普通 OpenAI API 不一定支持此端点。
 
 「模型」默认填写 `gpt-6.1-sol`，可以修改；留空保存也使用此默认值。模型名原样发送，不需要添加 `sub2api/`；若特定网关要求路由前缀，可自行填写完整模型名。搜索模型无需出现在 DSH 的聊天模型列表中。
 
-API KEY 输入框不会回显已保存密钥；留空保存表示保留现有覆盖。勾选「保存后恢复使用默认密钥」可撤销密钥覆盖。「恢复默认」会暂存清除地址和密钥覆盖，同时将模型恢复为 `gpt-6.1-sol`，点击「保存」后生效。所有修改对下次搜索立即生效，无需重启。
+API KEY 输入框留空时会保留已保存的覆盖。勾选「保存后清除覆盖密钥」可撤销密钥覆盖。「恢复默认」会暂存清除地址和密钥覆盖，同时将模型恢复为 `gpt-6.1-sol`，点击「保存」后生效。所有修改对下次搜索立即生效，无需重启。
 
 密钥通过 DSH 凭证服务单独保存，普通配置仅持有凭证引用。新的密钥先写入独立引用，然后地址和引用一同保存；配置保存被明确拒绝时不会替换旧地址或旧密钥。插件不会读取 Pi 的认证文件。请求超时保持 45 秒。
 

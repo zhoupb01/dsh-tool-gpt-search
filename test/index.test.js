@@ -17,16 +17,16 @@ beforeEach(t => {
 
 function createContext() {
   const state = {
-    routes: [{ provider: 'magpie', settingsNs: 'adapter-test', settingsPath: ['profiles', '1'] }],
+    routes: [{ provider: 'sub2api', settingsNs: 'adapter-test', settingsPath: ['profiles', '1'] }],
     forms: [{
       ns: 'adapter-test',
       value: { profiles: [
         { baseURL: 'https://wrong-profile.invalid', apiKeyEnv: 'WRONG_REF' },
-        { baseURL: 'https://gateway.invalid/v1/', apiKeyEnv: 'TEST_MAGPIE_KEY' },
+        { baseURL: 'https://gateway.invalid/v1/', apiKeyEnv: 'TEST_GATEWAY_KEY' },
       ] },
     }],
-    keys: new Map([['TEST_MAGPIE_KEY', fakeKey], ['ROTATED_REF', fakeRotatedKey]]),
-    models: [{ provider: 'magpie', id: modelId, name: 'Test model' }],
+    keys: new Map([['TEST_GATEWAY_KEY', fakeKey], ['ROTATED_REF', fakeRotatedKey]]),
+    models: [{ provider: 'sub2api', id: modelId, name: 'Test model' }],
     credentialRefs: [], modelProviders: [], settingsOptions: [], spills: [],
     tools: new Map(), sections: new Map(), removedTools: 0, removedSections: 0,
   }
@@ -86,7 +86,10 @@ function mount(t) {
 }
 
 function execution(overrides = {}) {
-  return { agent: { id: 'session-native' }, callId: 'call-native', signal: new AbortController().signal, ...overrides }
+  return {
+    callId: 'call-native', signal: new AbortController().signal, ...overrides,
+    agent: { id: 'session-native', model: { current: () => ({ provider: 'sub2api', model: modelId }) }, ...overrides.agent },
+  }
 }
 
 function abortablePending(signal) {
@@ -109,26 +112,25 @@ test('target discovery follows the provider directory namespace and nested setti
   const { ctx, state } = createContext()
   state.routes.unshift({ provider: 'unrelated', settingsNs: 'decoy', settingsPath: [] })
   state.forms.unshift({ ns: 'decoy', value: { baseURL: 'https://decoy.invalid', apiKeyEnv: 'WRONG_REF' } })
-  assert.deepEqual(await resolveTarget(ctx), { baseURL: 'https://gateway.invalid/v1/', apiKey: fakeKey })
-  assert.deepEqual(state.credentialRefs, ['TEST_MAGPIE_KEY'])
+  assert.deepEqual(await resolveTarget(ctx, {}, 'sub2api'), { baseURL: 'https://gateway.invalid/v1/', apiKey: fakeKey })
+  assert.deepEqual(state.credentialRefs, ['TEST_GATEWAY_KEY'])
   assert.deepEqual(state.settingsOptions, [{ redactSecrets: true }])
   assert.deepEqual(state.modelProviders, [])
 })
 
-test('DSH Responses route takes precedence over the magpie DeepSeek chat route', async () => {
-  const { ctx, state } = createContext()
-  state.routes.push({ provider: 'magpie-responses', settingsNs: 'responses-adapter', settingsPath: [] })
-  state.forms.push({ ns: 'responses-adapter', value: { baseURL: 'https://responses.invalid/v1', apiKeyEnv: 'ROTATED_REF' } })
-  assert.deepEqual(await resolveTarget(ctx), { baseURL: 'https://responses.invalid/v1', apiKey: fakeRotatedKey })
-  assert.deepEqual(state.modelProviders, [])
-  assert.deepEqual(state.credentialRefs, ['ROTATED_REF'])
+test('a missing session provider route never sends a search to a configured Magpie route', async t => {
+  const { state, tool } = mount(t)
+  state.routes[0].provider = 'magpie-responses'
+  t.mock.method(globalThis, 'fetch', async () => assert.fail('A search must not dispatch'))
+  await assert.rejects(tool.execute({ query: 'no implicit provider' }, execution()), /current session provider/)
+  assert.deepEqual(state.credentialRefs, [])
 })
 
 test('target discovery accepts a profile at the settings namespace root', async () => {
   const { ctx, state } = createContext()
   state.routes[0].settingsPath = []
-  state.forms[0].value = { baseURL: 'https://root.invalid', apiKeyEnv: 'TEST_MAGPIE_KEY' }
-  assert.deepEqual(await resolveTarget(ctx), { baseURL: 'https://root.invalid', apiKey: fakeKey })
+  state.forms[0].value = { baseURL: 'https://root.invalid', apiKeyEnv: 'TEST_GATEWAY_KEY' }
+  assert.deepEqual(await resolveTarget(ctx, {}, 'sub2api'), { baseURL: 'https://root.invalid', apiKey: fakeKey })
 })
 
 test('missing configuration fails with actionable errors before any HTTP request', async t => {
@@ -140,7 +142,7 @@ test('missing configuration fails with actionable errors before any HTTP request
     ['blank base URL', state => { state.forms[0].value.profiles[1].baseURL = '  ' }, /base URL/],
     ['missing reference', state => { delete state.forms[0].value.profiles[1].apiKeyEnv }, /API key/],
     ['missing credential', state => { state.keys.clear() }, /API key/],
-    ['empty credential', state => { state.keys.set('TEST_MAGPIE_KEY', '') }, /API key/],
+    ['empty credential', state => { state.keys.set('TEST_GATEWAY_KEY', '') }, /API key/],
   ]
   for (const [name, mutate, expected] of cases) {
     await t.test(name, async t => {
@@ -166,9 +168,9 @@ test('each execution sees fresh credentials and updated directory/settings witho
     return jsonResponse({ output: 'ok' })
   })
   await tool.execute({ query: 'first' }, execution({ agent: { id: 'session-one' } }))
-  state.keys.set('TEST_MAGPIE_KEY', fakeRotatedKey)
+  state.keys.set('TEST_GATEWAY_KEY', fakeRotatedKey)
   await tool.execute({ query: 'second' }, execution({ agent: { id: 'session-two' } }))
-  state.routes = [{ provider: 'magpie', settingsNs: 'new-adapter', settingsPath: ['route'] }]
+  state.routes = [{ provider: 'sub2api', settingsNs: 'new-adapter', settingsPath: ['route'] }]
   state.forms = [{ ns: 'new-adapter', value: { route: { baseURL: 'https://replacement.invalid/custom', apiKeyEnv: 'ROTATED_REF' } } }]
   await tool.execute({ query: 'third' }, execution({ agent: { id: 'session-three' } }))
   assert.deepEqual(requests.map(request => [request.url, request.authorization, request.body.id]), [
@@ -176,7 +178,7 @@ test('each execution sees fresh credentials and updated directory/settings witho
     ['https://gateway.invalid/v1/alpha/search', `Bearer ${fakeRotatedKey}`, 'session-two'],
     ['https://replacement.invalid/custom/alpha/search', `Bearer ${fakeRotatedKey}`, 'session-three'],
   ])
-  assert.deepEqual(state.credentialRefs, ['TEST_MAGPIE_KEY', 'TEST_MAGPIE_KEY', 'ROTATED_REF'])
+  assert.deepEqual(state.credentialRefs, ['TEST_GATEWAY_KEY', 'TEST_GATEWAY_KEY', 'ROTATED_REF'])
   assert.equal(state.settingsOptions.length, 3)
   assert.deepEqual(state.modelProviders, [])
 })
@@ -185,10 +187,10 @@ test('a settings change during credential lookup does not mix one endpoint with 
   const { ctx, state } = createContext()
   let finishLookup
   ctx.credentials.resolve = ref => {
-    assert.equal(ref, 'TEST_MAGPIE_KEY')
+    assert.equal(ref, 'TEST_GATEWAY_KEY')
     return new Promise(resolve => { finishLookup = resolve })
   }
-  const pending = resolveTarget(ctx)
+  const pending = resolveTarget(ctx, {}, 'sub2api')
   state.forms[0].value.profiles[1].baseURL = 'https://changed.invalid'
   state.forms[0].value.profiles[1].apiKeyEnv = 'ROTATED_REF'
   finishLookup({ value: fakeKey, source: 'mock' })
@@ -283,7 +285,7 @@ test('large results spill complete public content with the calling session and t
 test('invalid input and missing sessions fail before accessing credentials', async t => {
   const { tool, state } = mount(t)
   await assert.rejects(tool.execute({ query: ' \t ' }, execution()), /query/i)
-  await assert.rejects(tool.execute({ query: 'valid' }, execution({ agent: undefined })), /active DSH session/i)
+  await assert.rejects(tool.execute({ query: 'valid' }, { ...execution(), agent: undefined }), /active DSH session/i)
   assert.deepEqual(state.credentialRefs, [])
 })
 

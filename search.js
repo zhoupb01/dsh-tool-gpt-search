@@ -1,5 +1,4 @@
 // Port of the user's Pi codex-search extension; transport and result limits are preserved.
-export const PROVIDER = 'magpie'
 export const DEFAULT_MODEL = 'gpt-6.1-sol'
 
 export function normalizeModel(value) {
@@ -73,10 +72,10 @@ export function searchEndpoint(baseURL) {
   try {
     url = new URL(baseURL)
   } catch {
-    throw new Error('Configure a valid base URL for the GPT provider in Settings → Models.')
+    throw new Error('Configure a valid search base URL in Plugins → GPT search or Settings → Models.')
   }
   if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
-    throw new Error('The magpie base URL must use HTTP(S), without credentials, query, or fragment.')
+    throw new Error('The search base URL must use HTTP(S), without credentials, query, or fragment.')
   }
   url.pathname = `${url.pathname.replace(/\/+$/, '')}/alpha/search`
   return url

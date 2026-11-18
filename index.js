@@ -36,7 +36,8 @@ export function apply(ctx, config = {}) {
       if (!exec.agent) throw new Error('gpt_search requires an active DSH session.')
       const overrides = snapshotOverrides(config)
       const model = normalizeModel(overrides.model)
-      const target = await resolveTarget(ctx, overrides)
+      const provider = exec.agent.model.current()?.provider
+      const target = await resolveTarget(ctx, overrides, provider)
       signal.throwIfAborted()
       const full = await requestSearch({ params, target, model, sessionId: exec.agent.id, signal })
       signal.throwIfAborted()

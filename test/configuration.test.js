@@ -17,15 +17,13 @@ beforeEach(t => {
 function fixture(t, config) {
   const state = {
     routes: [
-      { provider: 'magpie', settingsNs: 'test-models', settingsPath: ['providers', 'magpie'] },
-      { provider: 'magpie-responses', settingsNs: 'test-models', settingsPath: ['providers', 'magpie-responses'] },
+      { provider: 'sub2api', settingsNs: 'test-models', settingsPath: ['providers', 'sub2api'] },
     ],
     profiles: {
-      magpie: { baseURL: 'https://legacy.invalid/v1', apiKeyEnv: 'TEST_LEGACY_KEY' },
-      'magpie-responses': { baseURL: DEFAULT_URL, apiKeyEnv: DEFAULT_REF },
+      sub2api: { baseURL: DEFAULT_URL, apiKeyEnv: DEFAULT_REF },
     },
-    keys: new Map([[DEFAULT_REF, DEFAULT_KEY], ['TEST_LEGACY_KEY', 'fake-legacy-key']]),
-    credentialRefs: [], modelProviders: [], settingsOptions: [], requests: [], tools: new Map(),
+    keys: new Map([[DEFAULT_REF, DEFAULT_KEY]]),
+    credentialRefs: [], modelProviders: [], requests: [], tools: new Map(),
     models: [{ id: MODEL }],
   }
   const disposers = []
@@ -35,12 +33,7 @@ function fixture(t, config) {
       listConfigurableProviders: () => state.routes,
       async listModels(provider) { state.modelProviders.push(provider); return state.models },
     },
-    settings: {
-      describe(options) {
-        state.settingsOptions.push(options)
-        return [{ ns: 'test-models', value: { providers: state.profiles } }]
-      },
-    },
+    settings: { describe: () => [{ ns: 'test-models', value: { providers: state.profiles } }] },
     credentials: {
       async resolve(ref) {
         state.credentialRefs.push(ref)
@@ -60,7 +53,7 @@ function fixture(t, config) {
 }
 
 function exec(id = 'configuration-test') {
-  return { agent: { id }, callId: `call-${id}`, signal: new AbortController().signal }
+  return { agent: { id, model: { current: () => ({ provider: 'sub2api', model: 'chat-model' }) } }, callId: `call-${id}`, signal: new AbortController().signal }
 }
 
 function captureRequests(t, state) {
@@ -132,28 +125,11 @@ test('snapshotOverrides handles plain and volatile configuration without retaini
   assert.deepEqual(snapshotOverrides(config), values)
 })
 
-test('unset overrides preserve Responses preference and the legacy magpie fallback', async t => {
-  for (const provider of ['magpie-responses', 'magpie']) {
-    await t.test(provider, async t => {
-      const { ctx, state } = fixture(t)
-      if (provider === 'magpie') state.routes = state.routes.filter(route => route.provider === provider)
-      const profile = state.profiles[provider]
-      state.keys.set(API_KEY_REF, 'fake-stored-but-unselected-key')
-      assert.deepEqual(await resolveTarget(ctx, snapshotOverrides(Config({}))), {
-        baseURL: profile.baseURL, apiKey: state.keys.get(profile.apiKeyEnv),
-      })
-      assert.deepEqual(state.credentialRefs, [profile.apiKeyEnv])
-      assert.deepEqual(state.modelProviders, [])
-      assert.deepEqual(state.settingsOptions, [{ redactSecrets: true }])
-    })
-  }
-})
-
-test('URL-only override uses the default provider key and does not require its model catalog', async t => {
+test('URL-only override for the same endpoint uses the session provider key and does not require its model catalog', async t => {
   const { ctx, state } = fixture(t)
   state.models = []
-  assert.deepEqual(await resolveTarget(ctx, { baseURL: '  https://independent.invalid/custom/v1/  ', apiKeyEnv: API_KEY_REF }), {
-    baseURL: 'https://independent.invalid/custom/v1/', apiKey: DEFAULT_KEY,
+  assert.deepEqual(await resolveTarget(ctx, { baseURL: `  ${DEFAULT_URL}/  `, apiKeyEnv: API_KEY_REF }, 'sub2api'), {
+    baseURL: `${DEFAULT_URL}/`, apiKey: DEFAULT_KEY,
   })
   assert.deepEqual(state.credentialRefs, [API_KEY_REF, DEFAULT_REF])
   assert.deepEqual(state.modelProviders, [])
@@ -164,7 +140,7 @@ test('key-only override uses the default URL independently of the chat model cat
   state.keys.set(API_KEY_REF, CUSTOM_KEY)
   state.models = []
   ctx.llm.listModels = async () => assert.fail('Search must not query the chat model catalog')
-  assert.deepEqual(await resolveTarget(ctx, { apiKeyEnv: API_KEY_REF }), { baseURL: DEFAULT_URL, apiKey: CUSTOM_KEY })
+  assert.deepEqual(await resolveTarget(ctx, { apiKeyEnv: API_KEY_REF }, 'sub2api'), { baseURL: DEFAULT_URL, apiKey: CUSTOM_KEY })
   assert.deepEqual(state.credentialRefs, [API_KEY_REF])
   assert.deepEqual(state.modelProviders, [])
 })
@@ -187,7 +163,7 @@ test('absent and empty override credentials fall back to the existing provider k
     await t.test(name, async t => {
       const { ctx, state } = fixture(t)
       if (credential !== undefined) state.keys.set(API_KEY_REF, credential)
-      assert.deepEqual(await resolveTarget(ctx, { apiKeyEnv: API_KEY_REF }), { baseURL: DEFAULT_URL, apiKey: DEFAULT_KEY })
+      assert.deepEqual(await resolveTarget(ctx, { apiKeyEnv: API_KEY_REF }, 'sub2api'), { baseURL: DEFAULT_URL, apiKey: DEFAULT_KEY })
       assert.deepEqual(state.credentialRefs, [API_KEY_REF, DEFAULT_REF])
     })
   }
@@ -195,7 +171,7 @@ test('absent and empty override credentials fall back to the existing provider k
 
 test('whitespace URL is treated as no URL override', async t => {
   const { ctx, state } = fixture(t)
-  assert.deepEqual(await resolveTarget(ctx, { baseURL: ' \t\n ', apiKeyEnv: API_KEY_REF }), {
+  assert.deepEqual(await resolveTarget(ctx, { baseURL: ' \t\n ', apiKeyEnv: API_KEY_REF }, 'sub2api'), {
     baseURL: DEFAULT_URL, apiKey: DEFAULT_KEY,
   })
   assert.deepEqual(state.modelProviders, [])
@@ -231,14 +207,14 @@ test('partial overrides cannot silently invent the missing default route', async
       const { ctx, state } = fixture(t)
       state.routes = []
       if (!overrides.baseURL) state.keys.set(API_KEY_REF, CUSTOM_KEY)
-      await assert.rejects(resolveTarget(ctx, overrides), /BASE_URL.*API KEY/)
+      await assert.rejects(resolveTarget(ctx, overrides, 'sub2api'), /BASE_URL.*API KEY/)
     })
   }
 })
 
 test('real apply dispatches URL-only, key-only, and complete overrides to the expected endpoint and auth', async t => {
   const cases = [
-    { name: 'URL only', baseURL: 'https://custom.invalid/v1/', customKey: false, expectedURL: 'https://custom.invalid/v1/alpha/search', expectedKey: DEFAULT_KEY },
+    { name: 'same endpoint with URL only', baseURL: `${DEFAULT_URL}/`, customKey: false, expectedURL: `${DEFAULT_URL}/alpha/search`, expectedKey: DEFAULT_KEY },
     { name: 'key only', baseURL: '', customKey: true, expectedURL: `${DEFAULT_URL}/alpha/search`, expectedKey: CUSTOM_KEY },
     { name: 'both without default route', baseURL: 'https://standalone.invalid/v1', customKey: true, noRoutes: true, expectedURL: 'https://standalone.invalid/v1/alpha/search', expectedKey: CUSTOM_KEY },
   ]
@@ -264,12 +240,11 @@ test('clearing the independent key and URL restores default routing on the next 
   captureRequests(t, state)
   await tool.execute({ query: 'custom configuration' }, exec('custom'))
   state.keys.delete(API_KEY_REF)
-  await tool.execute({ query: 'default key only' }, exec('cleared-key'))
+  await assert.rejects(tool.execute({ query: 'custom address without its key' }, exec('cleared-key')), /API KEY for the custom BASE_URL/)
   values.baseURL = '  '
   await tool.execute({ query: 'original defaults' }, exec('cleared-both'))
   assertRequest(state.requests[0], 'https://custom.invalid/v1/alpha/search', CUSTOM_KEY, 'custom')
-  assertRequest(state.requests[1], 'https://custom.invalid/v1/alpha/search', DEFAULT_KEY, 'cleared-key')
-  assertRequest(state.requests[2], `${DEFAULT_URL}/alpha/search`, DEFAULT_KEY, 'cleared-both')
+  assertRequest(state.requests[1], `${DEFAULT_URL}/alpha/search`, DEFAULT_KEY, 'cleared-both')
 })
 
 test('clearing the key reference stops using an independently stored key on the next call', async t => {
@@ -317,9 +292,9 @@ test('default configuration is snapshotted before an unresolved override falls b
     assert.equal(ref, DEFAULT_REF)
     return { value: DEFAULT_KEY, source: 'offline-test' }
   }
-  const pending = resolveTarget(ctx, { apiKeyEnv: API_KEY_REF })
-  state.profiles['magpie-responses'].baseURL = 'https://new-provider.invalid/v1'
-  state.profiles['magpie-responses'].apiKeyEnv = 'ROTATED_PROVIDER_KEY'
+  const pending = resolveTarget(ctx, { apiKeyEnv: API_KEY_REF }, 'sub2api')
+  state.profiles['sub2api'].baseURL = 'https://new-provider.invalid/v1'
+  state.profiles['sub2api'].apiKeyEnv = 'ROTATED_PROVIDER_KEY'
   pendingOverride.resolve(undefined)
   assert.deepEqual(await pending, { baseURL: DEFAULT_URL, apiKey: DEFAULT_KEY })
   assert.deepEqual(state.credentialRefs, [API_KEY_REF, DEFAULT_REF])

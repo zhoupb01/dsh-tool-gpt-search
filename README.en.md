@@ -12,13 +12,13 @@ You need a gateway that implements `POST /alpha/search`. This is a custom endpoi
 
 Use Node.js 22 or newer. The plugin targets the DSH `0.2.2-rc.3` plugin APIs; check compatibility before using another DSH version.
 
-Install from [npm](https://www.npmjs.com/package/dsh-tool-gpt-search). In DSH, open **Plugins → Add plugin** and enter `dsh-tool-gpt-search@0.3.1`, or ask DSH:
+Install from [npm](https://www.npmjs.com/package/dsh-tool-gpt-search). In DSH, open **Plugins → Add plugin** and enter `dsh-tool-gpt-search@0.4.0`, or ask DSH:
 
-> Use plugin_manager with action install_bundle to install dsh-tool-gpt-search@0.3.1
+> Use plugin_manager with action install_bundle to install dsh-tool-gpt-search@0.4.0
 
 The same version is also available as a `.tgz` package from [GitHub Releases](https://github.com/zhoupb01/dsh-tool-gpt-search/releases), with a `SHA256SUMS` checksum file:
 
-> Use plugin_manager with action install_bundle to install https://github.com/zhoupb01/dsh-tool-gpt-search/releases/download/v0.3.1/dsh-tool-gpt-search-0.3.1.tgz
+> Use plugin_manager with action install_bundle to install https://github.com/zhoupb01/dsh-tool-gpt-search/releases/download/v0.4.0/dsh-tool-gpt-search-0.4.0.tgz
 
 Alternatively, clone the source:
 
@@ -30,7 +30,7 @@ npm ci --ignore-scripts
 
 In DSH, open **Plugins → Add plugin** and install the cloned local directory, or ask DSH to install that directory with `plugin_manager`, action `install_bundle`. Installation affects all sessions in the current profile.
 
-Open **Plugins → Installed plugins → GPT search** to set the gateway's BASE_URL, API KEY, and model. If you already have a `magpie-responses` or `magpie` provider in **Settings → Models**, the plugin can reuse its address and credential. The Responses provider takes precedence.
+Search defaults to the model provider selected in the current chat. Open **Plugins → Installed plugins → GPT search** to specify a search gateway or model.
 
 ## Use
 
@@ -56,16 +56,16 @@ The BASE_URL must include any required prefix, such as `/v1`. For example, `http
 
 | Overrides | Address | Credential |
 | --- | --- | --- |
-| None | Existing provider | Existing provider |
-| BASE_URL only | Custom address | Existing provider |
-| API KEY only | Existing provider | Independent credential |
+| None | Current chat provider | Current chat provider |
+| BASE_URL only | Must resolve to the current provider's search address | Current chat provider |
+| API KEY only | Current chat provider | Independent credential |
 | Both | Custom address | Independent credential |
 
-Both overrides are required if neither default provider is configured. Each search reads settings and credentials again.
+Each search reads the chat's current model provider and its settings again. Configure both overrides if that provider lacks a search-compatible address or a reusable API key.
 
 The model defaults to `gpt-6.1-sol` and is sent exactly as entered. It does not need to appear in DSH's chat model catalog. Include a provider prefix only if your gateway requires one. Saving an empty model restores the default.
 
-The API KEY input never displays the saved value. Leaving it empty keeps the existing override. Select **Use the default key after saving** to clear the override. **Restore defaults** stages removal of both overrides and restores the default model; click **Save** to apply. Changes take effect on the next search.
+The API KEY input never displays the saved value. Leaving it empty keeps the existing override. Select **Clear the key override after saving** to remove the saved override. **Restore defaults** stages removal of both overrides and restores the default model; click **Save** to apply. Changes take effect on the next search.
 
 Credentials are saved through DSH's credential service; ordinary settings contain only a credential reference. A new key receives a new reference before the address and reference are committed together. A known settings refusal preserves the previous configuration. The plugin does not read Pi authentication files.
 

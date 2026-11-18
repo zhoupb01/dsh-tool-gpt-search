@@ -6,7 +6,7 @@ import { apply } from '../index.js'
 
 const target = { baseURL: 'https://search.invalid/v1', apiKey: 'fake-search-key' }
 const response = () => ({ ok: true, json: async () => ({ output: 'offline result', results: [] }) })
-const exec = { agent: { id: 'model-test' }, callId: 'model-call', signal: new AbortController().signal }
+const exec = { agent: { id: 'model-test', model: { current: () => ({ provider: 'sub2api', model: 'chat-model' }) } }, callId: 'model-call', signal: new AbortController().signal }
 
 beforeEach(t => {
   t.mock.method(globalThis, 'fetch', async () => assert.fail('Unexpected remote network request'))
@@ -20,7 +20,7 @@ function fixture(t, initial = {}) {
   const ctx = {
     effect(register) { const dispose = register(); t.after(dispose); return dispose },
     llm: {
-      listConfigurableProviders: () => [{ provider: 'magpie-responses', settingsNs: 'models', settingsPath: ['route'] }],
+      listConfigurableProviders: () => [{ provider: 'sub2api', settingsNs: 'models', settingsPath: ['route'] }],
       listModels: async () => assert.fail('The search model must be independent of chat model discovery'),
     },
     settings: { describe: () => [{ ns: 'models', value: { route: { baseURL: 'https://default.invalid/v1', apiKeyEnv: 'DEFAULT_KEY' } } }] },
